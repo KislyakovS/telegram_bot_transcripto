@@ -47,5 +47,5 @@ VOSK_MODEL_PATH - Путь к модели Vosk
 ### 3. Запусти бота
 
 ```bash
-npm start
+npm run start
 ```
