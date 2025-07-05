@@ -1,0 +1,19 @@
+{
+  "name": "telegram_bot_transcripto",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "axios": "1.10.0",
+    "dotenv": "17.0.1",
+    "ffmpeg-static": "5.2.0",
+    "fluent-ffmpeg": "2.1.3",
+    "nanoid": "5.1.5",
+    "node-telegram-bot-api": "0.66.0",
+    "vosk": "0.3.39"
+  },
+  "engines": {
+    "node": "=20.11.1"
+  }
+}
