@@ -6,20 +6,24 @@ module.exports = class VoiceParser {
     return fs.existsSync(modelPath);
   };
 
-  constructor(modelPath, { sampleRate = 16000 } = {}) {
+  constructor(modelPath) {
     if (!VoiceParser.hasModel(modelPath)) {
       throw new Error(`❌ Модель (${modelPath}) не найдена`);
     }
 
     this.model = new vosk.Model(modelPath);
-    this.rec = new vosk.Recognizer({ model: this.model, sampleRate });
   }
 
-  parse = (voiceBuffer) => {
-    this.rec.acceptWaveform(voiceBuffer);
-    const result = this.rec.finalResult();
-    this.rec.free();
-
-    return result.text;
+  parse = (stream, { sampleRate = 16000 } = {}) => {
+    const rec = new vosk.Recognizer({ model: this.model, sampleRate });
+    return new Promise((resolve, reject) => {
+      stream.on("data", (data) => rec.acceptWaveform(data));
+      stream.on("end", () => {
+        const result = rec.finalResult();
+        rec.free();
+        resolve(result.text);
+      });
+      stream.on("error", reject);
+    });
   };
 };

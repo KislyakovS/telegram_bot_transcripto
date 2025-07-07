@@ -1,38 +1,42 @@
-const fs = require("fs");
-const path = require("path");
-const crypto = require("crypto");
 const TelegramBot = require("node-telegram-bot-api");
 const VoiceParser = require("./modules/VoiceParser.js");
-const { downloadAndConvertOggToWav } = require("./modules/audioConverter.js");
+const { getWavStreamFromUrl } = require("./modules/getWavStreamFromUrl.js");
+
 require("dotenv").config();
 
 const voiceParser = new VoiceParser(process.env.VOSK_MODEL_PATH);
-const bot = new TelegramBot(process.env.TG_BOT_TOKEN, { polling: true });
+const telegram = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, {
+  polling: true,
+});
 
-const createPathVoiceFile = (extension) =>
-  path.join(process.cwd(), "voices", `${crypto.randomUUID()}.${extension}`);
+const isEmptyString = (str) =>
+  str === null || str === undefined || str.trim() === "";
 
-bot.on("voice", async (msg) => {
-  const chatId = msg.chat.id;
-  const fileId = msg.voice.file_id;
+telegram.on("message", async (message) => {
+  const chatID = message.chat.id;
 
-  bot.sendMessage(chatId, "🔊 Обрабатываю голос...");
+  telegram.sendMessage(chatID, "🔊 Обрабатываю голос...");
 
   try {
-    const fileLink = await bot.getFileLink(fileId);
-    const oggPath = createPathVoiceFile("ogg");
-    const wavPath = createPathVoiceFile("wav");
+    const file = message.voice || message.video_note;
 
-    await downloadAndConvertOggToWav(fileLink, oggPath, wavPath);
+    if (!file || !file.file_id) {
+      telegram.sendMessage(chatID, "⚠️ Отправь голосовое или видеосообщение.");
 
-    const voiceText = voiceParser.parse(fs.readFileSync(wavPath));
+      return;
+    }
 
-    bot.sendMessage(chatId, `📝 Текст: ${voiceText ?? "[нет текста]"}`);
+    const fileLink = await telegram.getFileLink(file.file_id);
+    const { stream, remove } = await getWavStreamFromUrl(fileLink);
+    const voiceText = await voiceParser.parse(stream);
 
-    fs.unlink(oggPath, () => {});
-    fs.unlink(wavPath, () => {});
-  } catch (err) {
-    console.error(err);
-    bot.sendMessage(chatId, "⚠️ Ошибка при обработке");
+    telegram.sendMessage(
+      chatID,
+      `📝 Текст: ${isEmptyString(voiceText) ? "[нет текста]" : voiceText}`,
+    );
+    remove();
+  } catch (error) {
+    console.error(error);
+    telegram.sendMessage(chatID, "⚠️ Ошибка при обработке");
   }
 });
